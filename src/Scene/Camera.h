@@ -17,7 +17,6 @@ public:
 	inline glm::vec3 getViewDir() const { return viewDir; };
 	inline glm::mat4 getViewMat() const { return viewMat; };
 
-
 	inline glm::vec3 getFront() { return front; };
 	inline glm::vec3 getRight() { return right; };
 

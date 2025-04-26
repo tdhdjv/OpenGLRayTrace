@@ -1,5 +1,5 @@
 #include "BVH.h"
-#include "Camera.h"
+#include "Scene/Camera.h"
 
 #include <iostream>
 #include <algorithm>

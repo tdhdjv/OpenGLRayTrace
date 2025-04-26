@@ -4,7 +4,6 @@
 #include <ASSIMP/scene.h>
 #include <ASSIMP/postprocess.h>
 
-#include "Renderer/Shader.h"
 #include "Core/Defines.h"
 #include "Scene/Mesh.h"
 

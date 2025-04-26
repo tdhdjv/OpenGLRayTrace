@@ -3,8 +3,6 @@
 #include <GLM/glm.hpp>
 #include "Core/Defines.h"
 #include "Scene/Camera.h"
-#include "Renderer/VertexArray.h"
-#include "Renderer/Shader.h"
 #include "Scene/Mesh.h"
 
 #define MAX_DEPTH 16

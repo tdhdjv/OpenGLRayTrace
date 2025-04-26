@@ -2,7 +2,8 @@
 
 Mesh::Mesh(list<Vertex> vertices, list<unsigned> indices, list<Texture> textures):
 	vertices(vertices), indices(indices), textures(textures),
-	vbo(VertexBuffer(vertices.data(), sizeof(Vertex)*vertices.size())), ebo(indices.data(), sizeof(unsigned) * indices.size()) {
+	vbo(VertexBuffer(vertices.data(), sizeof(Vertex)*vertices.size())), ebo(indices.data(), sizeof(unsigned) * indices.size()),
+	modelMatrix(glm::mat4(1.0f)){
 
 	VertexBufferLayout layout;
 	layout.push<float>(4);

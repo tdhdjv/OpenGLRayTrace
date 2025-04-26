@@ -10,16 +10,18 @@
 #include <iostream>
 
 #include "Core.h"
-#include "Renderer/VertexArray.h"
-#include "Renderer/VertexBuffer.h"
-#include "Renderer/IndexBuffer.h"
-#include "Renderer/Shader.h"
-#include "Renderer/FrameBuffer.h"
-#include "Renderer/ShaderStorageBuffer.h"
+#include "OpenGL/VertexArray.h"
+#include "OpenGL/VertexBuffer.h"
+#include "OpenGL/IndexBuffer.h"
+#include "OpenGL/Shader.h"
+#include "OpenGL/FrameBuffer.h"
+#include "OpenGL/ShaderStorageBuffer.h"
+#include "RayTrace/BVH.h"
 #include "Scene/Camera.h"
-#include "Scene/BVH.h"
 #include "Scene/Mesh.h"
 #include "Scene/Model.h"
+
+#include "Core/Application.h"
 
 static void setVAO(const VertexArray& VAO, const ref<BVHNode>& node, unsigned depth = 16) {
 
@@ -110,6 +112,13 @@ static void setVAO(const VertexArray& VAO, const ref<BVHNode>& node, unsigned de
 }
 
 int main() {
+	Application* application = createApplication();
+	application->run();
+	delete application;
+}
+
+/*
+int main() {
 	int WIDTH = 1000;
 	int HEIGHT = 800;
 	Window window(WIDTH, HEIGHT, "Hello UWU!");
@@ -195,23 +204,33 @@ int main() {
 	double lastTime = glfwGetTime();
 
 	Model model1("res/models/Bunny.obj");
-	Model model2("res/models/Dragon.obj");
+	Model model2("res/models/Dragon_8K.obj");
 
 	//BVH
-	ref<BVHNode> node = makeRef<BVHNode>(*model1.getMeshes()[0]);
+	ref<BVHNode> node1 = makeRef<BVHNode>(*model1.getMeshes()[0]);
+	ref<BVHNode> node2 = makeRef<BVHNode>(*model2.getMeshes()[0]);
 
 	VertexArray nodeVAO;
-	setVAO(nodeVAO, node);
+	setVAO(nodeVAO, node1);
 
-	list<SSBOData> dataList1;
 	list<Vertex> vertices2 = model1.getMeshes()[0]->getVertices();
 	list<unsigned> indices2 = model1.getMeshes()[0]->getIndices();
-	list<BVHData> BVHDataList = node->getBVHData();
-	list<glm::mat4> modelMatrices = list<glm::mat4>();
+	list<BVHData> BVHDataList = node1->getBVHData();
+	list<MeshData> meshDataList = list<MeshData>();
 
-	modelMatrices.push_back(glm::translate(glm::mat4(1.0f), {0.0, 0.0, 0.0f}));
-	modelMatrices.push_back(glm::translate(glm::mat4(1.0f), { 0.0, 0.0, 5.0f }));
+	meshDataList.push_back({ glm::translate(glm::mat4(0.5f), {-0.5, 0.1, 0.0f}), 0 , 0, 0, 0});
+	unsigned indexOffset = (unsigned) indices2.size();
+	unsigned vertexOffset = (unsigned)vertices2.size();
+	meshDataList.push_back({ glm::translate(glm::mat4(0.5f), {0.5f, 0.2, 0.0f}), (unsigned) BVHDataList.size(), indexOffset, vertexOffset, 0});
 
+	list<Vertex> vert = model2.getMeshes()[0]->getVertices();
+	list<unsigned> ind = model2.getMeshes()[0]->getIndices();
+	list< BVHData> bvh = node2->getBVHData();
+	vertices2.insert(vertices2.end(), vert.begin(), vert.end());
+	indices2.insert(indices2.end(), ind.begin(), ind.end());
+	BVHDataList.insert(BVHDataList.end(), bvh.begin(), bvh.end());
+
+	list<SSBOData> dataList1;
 	dataList1.emplace_back(vertices2.data(), 12 * sizeof(float) * vertices2.size());
 	ShaderStorageBuffer ssbo1(1, dataList1);
 	ssbo1.bind();
@@ -227,7 +246,7 @@ int main() {
 	ssbo3.bind();
 
 	list<SSBOData> dataList4;
-	dataList4.emplace_back(modelMatrices.data(), sizeof(float) * 16 * modelMatrices.size());
+	dataList4.emplace_back(meshDataList.data(), sizeof(float) * 20 * meshDataList.size());
 	ShaderStorageBuffer ssbo4(4, dataList4);
 	ssbo4.bind();
 
@@ -344,11 +363,12 @@ int main() {
 		boxShader.setUniformFloat1("alpha", 0.5);
 		GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 		GLCall(glDrawElementsInstanced(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0, 16384));
-		*/
+		
 
 		ImGui::Begin("Parameters");
 		ImGui::SliderFloat("Depth of Field", &depthOfField, 0.0, 10.0);
 		ImGui::SliderFloat("Blur", &blur, 0.0, 20.0);
+		ImGui::SliderFloat("Speed", &speed, 0.0, 5.0);
 		ImGui::SliderInt("Depth", &depth, 0, 12);
 		ImGui::End();
 
@@ -367,3 +387,5 @@ int main() {
 	glfwTerminate();
 	std::cin.get();
 }
+
+*/

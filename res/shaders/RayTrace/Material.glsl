@@ -7,9 +7,9 @@ const uint Glossy = 4;
 struct Material {
     uint MaterialType;
     vec3 color;
-    //fuzziness / index of refaction / smoothness
+    //smoothness / index of refaction / smoothness
     float value1;
-    //None / fuzziness / reflect probablity
+    //None / smoothness / reflect probablity
     float value2;
 };
 

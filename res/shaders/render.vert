@@ -13,5 +13,5 @@ out vec3 Normal;
 
 void main() {
     Normal = normal.xyz;
-    gl_Position = projection * view * vec4(position.xyz, 1.0);
+    gl_Position = projection * view * model * vec4(position.xyz, 1.0);
 }

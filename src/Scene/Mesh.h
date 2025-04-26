@@ -5,12 +5,20 @@
 #include <string>
 
 #include "Core/Defines.h"
-#include "Renderer/Shader.h"
-#include "Renderer/IndexBuffer.h"
-#include "Renderer/VertexBuffer.h"
-#include "Renderer/VertexArray.h"
+#include "OpenGL/Shader.h"
+#include "OpenGL/IndexBuffer.h"
+#include "OpenGL/VertexBuffer.h"
+#include "OpenGL/VertexArray.h"
 
 #include "Scene/Camera.h"
+
+struct MeshData {
+	glm::mat4 modelMatrix;
+	unsigned bvhNodeOffset;
+	unsigned indicesOffset;
+	unsigned verticesOffset;
+	float pad1;
+};
 
 struct Texture {
 	unsigned rendererID;

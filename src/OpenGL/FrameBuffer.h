@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/RenderBuffer.h"
+#include "OpenGL/RenderBuffer.h"
 
 class FrameBuffer {
 public:

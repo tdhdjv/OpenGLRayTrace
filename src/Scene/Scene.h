@@ -6,12 +6,17 @@
 
 class Scene {
 public:
-	Scene();
+	Scene() = default;
 
-	void addMesh(Mesh&& mesh);
+	void addMesh(ref<Mesh> mesh);
 	void addModel(Model&& model);
 
-	inline const list<ref<Mesh>> getMeshes() const { return meshList; }
+	void update(float dt);
+
+	inline const Camera& getCamera() const { return camera; }
+	inline const list<ref<Mesh>>& getMeshes() const { return meshList; }
+
 private:
+	Camera camera;
 	list<ref<Mesh>> meshList;
 };

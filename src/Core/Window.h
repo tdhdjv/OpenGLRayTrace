@@ -10,12 +10,11 @@ public:
 	inline GLFWwindow* getNative() { return nativeWindow; };
 	inline bool shouldClose() { return glfwWindowShouldClose(nativeWindow); }
 	inline void pollEvent() { glfwPollEvents(); }
-	inline void swapBuffer() { 
+	inline bool getKey(int key) const { return glfwGetKey(nativeWindow, key); }
+	inline void swapBuffer() {
 		glFlush();
 		glfwSwapBuffers(nativeWindow);
 	}
-
-	inline bool getKey(int key) { return glfwGetKey(nativeWindow, key); }
 private:
 	int width;
 	int height;

@@ -22,7 +22,14 @@ vec3 screenUp;
 
 int testCount = 0;
 int testCount2 = 0;
+int testCount3 = 0;
+
 #define DEBUG false
+
+
+const vec3 sunColor = vec3(1.0);
+const float sunFocus = 500;
+const float sunIntensity = 10;
 
 #define TAU 6.283185307179586
 
@@ -49,9 +56,9 @@ const uint Glossy = 4;
 struct Material {
     uint MaterialType;
     vec3 color;
-    //fuzziness / index of refaction / smoothness
+    //smoothness / index of refaction / smoothness
     float value1;
-    //None / fuzziness / reflect probablity
+    //None / smoothness / reflect probablity
     float value2;
 };
 
@@ -93,7 +100,7 @@ Ray rayBounce(Ray ray, in RayHit hit, inout uint state) {
         break;
     
     case Metallic:
-        float w = hit.mat.value1;
+        float w = 1.0 - hit.mat.value1;
         dir = randDir*w + refl;
         break;
 
@@ -105,7 +112,7 @@ Ray rayBounce(Ray ray, in RayHit hit, inout uint state) {
         float cosine = dot(-ray.dir, hit.normal);
         if(length(refractDir) == 0.0 || fresnel(cosine, eta) > rand(state)) { dir = refl; }
         else { dir = refractDir; }
-        dir += randDir * hit.mat.value2;
+        dir += randDir * (1.0 - hit.mat.value2);
         break;
 
     case Glossy:
@@ -240,27 +247,35 @@ struct Vertex {
     vec2 texturePos;
 };
 
+struct Model {
+    mat4 modelMat;
+    uint bvhNodeOffset;
+    uint indicesOffset;
+    uint verticesOffset;
+    float _offset;//offset
+};
+
 layout(std430, binding = 1) buffer VertexBuffer {
     Vertex vertices[];
 };
 
 layout(std430, binding = 2) buffer IndexBuffer {
-    int indices[];
+    uint indices[];
 };
 
 layout(std430, binding = 3) buffer BVHBuffer {
     BVHNode BVHNodes[];
 };
 
-layout(std430, binding = 4) buffer ModelMatrixBuffer {
-    mat4 modelMat[];
+layout(std430, binding = 4) buffer ModelBuffer {
+    Model modelList[];
 };
 
 Sphere[SPHERE_COUNT] spheres;
 
 void instanceObjects() {
-    spheres[0] = Sphere(vec3(0.0,  -100.0,  0.0), 100.0, Material(Metallic, vec3(1.0, 0.7098, 0.0314), 0.1, 0.0));
-    spheres[1] = Sphere(vec3( 0.0,  0.0,  5.0), 1.0, Material(Lambertian, vec3(1.0), 1.5, 0.0));
+    spheres[0] = Sphere(vec3(0.0,  -100.0,  0.0), 100.0, Material(Lambertian, vec3(0.9), 0.1, 0.0));
+    //spheres[1] = Sphere(vec3( 0.0,  0.0,  5.0), 1.0, Material(Lambertian, vec3(1.0), 1.5, 0.0));
 }
 
 Ray generateRay(vec2 uv, vec3 screenRight, vec3 screenUp, uint state) {
@@ -273,10 +288,24 @@ Ray generateRay(vec2 uv, vec3 screenRight, vec3 screenUp, uint state) {
     return Ray(startPoint, dir, invDir, 0.001, 1000.0, vec3(1.0));
 }
 
-RayHit intersectModel(Ray ray, uint bvhNodeOffset, uint modelMatrixIndex) {
+RayHit intersectModel(Ray ray, uint modelIndex) {
     RayHit hit = RayHit(false, false, vec3(0.0), vec3(0.0), 0.0, Material(Lambertian, vec3(0.0), 0.0, 0.0));
-    ray.origin = vec3(inverse(modelMat[modelMatrixIndex]) * vec4(ray.origin, 1.0));
-    ray.dir = vec3(inverse(modelMat[modelMatrixIndex]) * vec4(ray.dir, 0.0));
+
+
+    Model model = modelList[modelIndex];
+    uint bvhNodeOffset = model.bvhNodeOffset;
+    uint indicesOffset = model.indicesOffset;
+    uint verticesOffset = model.verticesOffset;
+
+    mat4 modelMatrix = modelList[modelIndex].modelMat;
+    mat4 invModel = inverse(modelMatrix);
+
+    vec3 originalDir = ray.dir;
+    vec3 originalOrigin = ray.origin;
+
+    ray.origin = vec3(inverse(modelMatrix) * vec4(ray.origin, 1.0));
+    ray.dir = vec3(inverse(modelMatrix) * vec4(ray.dir, 0.0));
+    ray.invDir = 1.0/ray.dir;
 
     float t = AABBTest(ray, BVHNodes[bvhNodeOffset].minPos,  BVHNodes[bvhNodeOffset].maxPos);
     if(ray.maxT > t && t > 0.0) {
@@ -291,12 +320,11 @@ RayHit intersectModel(Ray ray, uint bvhNodeOffset, uint modelMatrixIndex) {
             
             if(node.triCount > 0) {
                 //triangle tests
-                bool isHitTri = false;
                 for(int i = 0; i < node.triCount; i++) {
                     
-                    int index1 = indices[i*3 + node.start + bvhNodeOffset];
-                    int index2 = indices[i*3 + node.start + bvhNodeOffset + 1];
-                    int index3 = indices[i*3 + node.start + bvhNodeOffset + 2];
+                    uint index1 = indices[i*3 + node.start + indicesOffset] + verticesOffset;
+                    uint index2 = indices[i*3 + node.start + indicesOffset + 1] + verticesOffset;
+                    uint index3 = indices[i*3 + node.start + indicesOffset + 2] + verticesOffset;
 
                     vec3 pos1 = vertices[index1].position;
                     vec3 pos2 = vertices[index2].position;
@@ -306,22 +334,24 @@ RayHit intersectModel(Ray ray, uint bvhNodeOffset, uint modelMatrixIndex) {
                     vec3 normal2 = vertices[index2].normal;
                     vec3 normal3 = vertices[index3].normal;
 
-                    Triangle tri = Triangle(pos1, pos2, pos3, normal1, normal2, normal3, Material(Lambertian, vec3(1.0, 1.0, 1.0), 0.0, 0.15));
+                    Triangle tri = Triangle(pos1, pos2, pos3, normal1, normal2, normal3, Material(Lambertian, vec3(1.0, 1.0, 1.0), 1.0, 0.95));
+                    testCount2++;
                     RayHit temp = intersectTriangle(ray, tri);
                     
                     if(temp.isHit) {
                         ray.maxT = temp.t;
-                        if(!DEBUG) hit = temp;
-                        isHitTri = true;
+                        hit = temp;
+                        testCount3++;
+                        hit.position = originalOrigin + originalDir * temp.t;
+                        hit.normal = normalize(vec3(modelMatrix * vec4(hit.normal, 0.0)));
                     }
                 }
-                if(isHitTri) index = -100;
             }
 
             else {
                 //adding Children
-                uint smallNodeIndex = node.start;
-                uint bigNodeIndex = node.start+1;
+                uint smallNodeIndex = node.start + bvhNodeOffset;
+                uint bigNodeIndex   = node.start + bvhNodeOffset + 1;
 
                 BVHNode smallNode = BVHNodes[smallNodeIndex];
                 BVHNode bigNode = BVHNodes[bigNodeIndex];
@@ -340,13 +370,10 @@ RayHit intersectModel(Ray ray, uint bvhNodeOffset, uint modelMatrixIndex) {
                 }
 
                 testCount += 2;
-                if(ray.maxT > bigT && bigT >= ray.minT) { stack[index++] = bigNodeIndex; }
-                if(ray.maxT > smallT && smallT >= ray.minT) { stack[index++] = smallNodeIndex; }
+                if(ray.maxT >= bigT && bigT >= ray.minT) { stack[index++] = bigNodeIndex; }
+                if(ray.maxT >= smallT && smallT >= ray.minT) { stack[index++] = smallNodeIndex; }
             }
         }
-
-        hit.position = vec3(modelMat[modelMatrixIndex] * vec4(hit.position, 1.0));
-        hit.normal = vec3(modelMat[modelMatrixIndex] * vec4(hit.normal, 0.0));
     }
 
     return hit;
@@ -357,20 +384,40 @@ RayHit intersectAll(Ray ray) {
     for(int i = 0; i < SPHERE_COUNT; i++) {
         Sphere sphere = spheres[i];
         RayHit temp = intersectSphere(ray, sphere);
-        testCount2++;
         if(temp.isHit) {
             ray.maxT = temp.t;
             hit = temp;
         }
     }
 
-    RayHit temp = intersectModel(ray, 0, 0);
-    if(temp.isHit) { 
-        ray.maxT = temp.t;
-        hit = temp;
+    for(int i = 0; i < 2; i++) {
+        RayHit temp = intersectModel(ray, i);
+        if(temp.isHit) { 
+            ray.maxT = temp.t;
+            hit = temp;
+        }
     }
     
     return hit;
+}
+
+vec3 getEnvironmentLight(vec3 dir) {
+
+    const vec3 groundColour = vec3(0.35, 0.3, 0.35);
+    const vec3 skyColourHorizon = vec3(1, 1, 1);
+    const vec3 skyColourZenith = vec3(0.08, 0.37, 0.73);
+    
+
+    float skyGradientT = pow(smoothstep(0, 0.4, dir.y), 0.35);
+    float groundToSkyT = smoothstep(-0.01, 0, dir.y);
+    vec3 skyGradient = skyColourHorizon * (1.0 - skyGradientT) + skyColourZenith * skyGradientT;
+    vec3 lightPos = vec3(0.0, 1.0, 0.0);
+
+    float sun = pow(max(0, dot(dir, lightPos)), sunFocus) * sunIntensity;
+    // Combine ground, sky, and sun
+    float aboveGround = groundToSkyT >= 1.0 ? 1.0: 0.0;
+    vec3 composite = ( (1.0 -groundToSkyT) * groundColour + skyGradient * groundToSkyT) + sun * sunColor * aboveGround;
+    return composite;
 }
 
 vec3 getColor(vec2 uv, uint val) {
@@ -382,11 +429,13 @@ vec3 getColor(vec2 uv, uint val) {
 
         for (int i = 0; i < MAX_BOUNCE; i++) {
             RayHit hit = intersectAll(ray);
-            if(DEBUG) color += vec3(testCount*0.001, testCount2 * 0.001, 0.0);
+            if(DEBUG) {
+                color += vec3(testCount * 0.01, testCount2 * 0.5, testCount3 * 0.5);
+                return color;
+            }
             if(!hit.isHit) {
                 if(DEBUG) break;
-                float r = ray.dir.y * 0.5 + 0.5;
-                color += ray.energy*vec3(r);
+                color += ray.energy*getEnvironmentLight(ray.dir);
                 break;
             }
 

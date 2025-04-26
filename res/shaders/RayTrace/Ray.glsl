@@ -38,7 +38,7 @@ Ray rayBounce(Ray ray, in RayHit hit, inout uint state) {
         break;
     
     case Metallic:
-        float w = hit.mat.value1;
+        float w = 1.0 - hit.mat.value1;
         dir = randDir*w + refl;
         break;
 
@@ -50,7 +50,7 @@ Ray rayBounce(Ray ray, in RayHit hit, inout uint state) {
         float cosine = dot(-ray.dir, hit.normal);
         if(length(refractDir) == 0.0 || fresnel(cosine, eta) > rand(state)) { dir = refl; }
         else { dir = refractDir; }
-        dir += randDir * hit.mat.value2;
+        dir += randDir * (1.0 - hit.mat.value2);
         break;
 
     case Glossy:
