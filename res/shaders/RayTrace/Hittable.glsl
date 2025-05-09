@@ -8,18 +8,6 @@ struct Model {
     Material mat;
 };
 
-struct Triangle {
-    vec3 a;
-    vec3 b;
-    vec3 c;
-
-    vec3 normalA;
-    vec3 normalB;
-    vec3 normalC;
-
-    Material mat;
-};
-
 struct Sphere {
     vec3 position;
     float radius;
@@ -31,13 +19,13 @@ float square_length(vec3 vec) {
     return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
 }
 
-RayHit intersectTriangle(Ray ray, Triangle tri) {
+RayHit intersectTriangle(Ray ray, Triangle tri, Material mat) {
     RayHit hit = RayHit(false, false, vec3(0.0), vec3(0.0, 1.0, 0.0), 0.0, Material(Lambertian, vec3(0.0), 0.0, 0.0));
     
-    vec3 edgeAB = tri.b - tri.a;
-    vec3 edgeAC = tri.c - tri.a;
+    vec3 edgeAB = tri.positionB - tri.positionA;
+    vec3 edgeAC = tri.positionC - tri.positionA;
     vec3 normalVector = cross(edgeAB, edgeAC);
-    vec3 ao = ray.origin - tri.a;
+    vec3 ao = ray.origin - tri.positionA;
     vec3 dao = cross(ao, ray.dir);
 
     float determinant = -dot(ray.dir, normalVector);
@@ -53,7 +41,7 @@ RayHit intersectTriangle(Ray ray, Triangle tri) {
     hit.position = ray.origin + ray.dir * dst;
     hit.normal = length(tri.normalA) == 0 ? normalize(cross(edgeAB, edgeAC)) : normalize(tri.normalA * w + tri.normalB * u + tri.normalC * v);
     hit.t = dst;
-    hit.mat = tri.mat;
+    hit.mat = mat;
     return hit;
 }
 

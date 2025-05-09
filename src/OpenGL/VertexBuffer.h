@@ -8,6 +8,7 @@ private:
 public:
     VertexBuffer(const void* vertices, size_t size);
     VertexBuffer(const VertexBuffer&) = delete;
+    VertexBuffer(VertexBuffer&& vertexBuffer) noexcept;
     VertexBuffer& operator=(const VertexBuffer&) = delete;
     ~VertexBuffer();
 

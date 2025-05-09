@@ -10,7 +10,9 @@ struct SSBOData {
 
 class ShaderStorageBuffer {
 public:
+	ShaderStorageBuffer();
 	ShaderStorageBuffer(unsigned bindingLocation, list<SSBOData> dataList);
+	ShaderStorageBuffer& operator=(ShaderStorageBuffer&& other) noexcept;
 	~ShaderStorageBuffer();
 
 	inline void bind() const { GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));  };

@@ -31,6 +31,22 @@ const vec3 sunColor = vec3(1.0);
 const float sunFocus = 500;
 const float sunIntensity = 10;
 
+struct Triangle {
+    vec3 positionA;
+    float _offset1;
+    vec3 positionB;
+    float _offset2;
+    vec3 positionC;
+    float _offset3;
+
+    vec3 normalA;
+    float _offset4;
+    vec3 normalB;
+    float _offset5;
+    vec3 normalC;
+    float _offset6;
+};
+
 #define TAU 6.283185307179586
 
 float rand(inout uint state) {
@@ -139,18 +155,6 @@ struct Model {
     Material mat;
 };
 
-struct Triangle {
-    vec3 a;
-    vec3 b;
-    vec3 c;
-
-    vec3 normalA;
-    vec3 normalB;
-    vec3 normalC;
-
-    Material mat;
-};
-
 struct Sphere {
     vec3 position;
     float radius;
@@ -162,13 +166,13 @@ float square_length(vec3 vec) {
     return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
 }
 
-RayHit intersectTriangle(Ray ray, Triangle tri) {
+RayHit intersectTriangle(Ray ray, Triangle tri, Material mat) {
     RayHit hit = RayHit(false, false, vec3(0.0), vec3(0.0, 1.0, 0.0), 0.0, Material(Lambertian, vec3(0.0), 0.0, 0.0));
     
-    vec3 edgeAB = tri.b - tri.a;
-    vec3 edgeAC = tri.c - tri.a;
+    vec3 edgeAB = tri.positionB - tri.positionA;
+    vec3 edgeAC = tri.positionC - tri.positionA;
     vec3 normalVector = cross(edgeAB, edgeAC);
-    vec3 ao = ray.origin - tri.a;
+    vec3 ao = ray.origin - tri.positionA;
     vec3 dao = cross(ao, ray.dir);
 
     float determinant = -dot(ray.dir, normalVector);
@@ -184,7 +188,7 @@ RayHit intersectTriangle(Ray ray, Triangle tri) {
     hit.position = ray.origin + ray.dir * dst;
     hit.normal = length(tri.normalA) == 0 ? normalize(cross(edgeAB, edgeAC)) : normalize(tri.normalA * w + tri.normalB * u + tri.normalC * v);
     hit.t = dst;
-    hit.mat = tri.mat;
+    hit.mat = mat;
     return hit;
 }
 
@@ -241,40 +245,31 @@ float AABBTest(Ray ray, vec3 minPos, vec3 maxPos) {
     return dst;
 }
 
-struct Vertex {
-    vec3 position;
-    vec3 normal;
-    vec2 texturePos;
-};
-
 struct Model {
     mat4 modelMat;
     uint bvhNodeOffset;
-    uint indicesOffset;
-    uint verticesOffset;
-    float _offset;//offset
+    uint triOffset;
+    float _pad1;
+    float _pad2;
 };
 
-layout(std430, binding = 1) buffer VertexBuffer {
-    Vertex vertices[];
+layout(std430, binding = 1) buffer TriData {
+    Triangle triangles[];
 };
 
-layout(std430, binding = 2) buffer IndexBuffer {
-    uint indices[];
-};
-
-layout(std430, binding = 3) buffer BVHBuffer {
+layout(std430, binding = 2) buffer BVHData {
     BVHNode BVHNodes[];
 };
 
-layout(std430, binding = 4) buffer ModelBuffer {
+layout(std430, binding = 3) buffer ModelData {
     Model modelList[];
 };
+
 
 Sphere[SPHERE_COUNT] spheres;
 
 void instanceObjects() {
-    spheres[0] = Sphere(vec3(0.0,  -100.0,  0.0), 100.0, Material(Lambertian, vec3(0.9), 0.1, 0.0));
+    //spheres[0] = Sphere(vec3(0.0,  -100.0,  0.0), 100.0, Material(Lambertian, vec3(0.9), 1.0, 0.15));
     //spheres[1] = Sphere(vec3( 0.0,  0.0,  5.0), 1.0, Material(Lambertian, vec3(1.0), 1.5, 0.0));
 }
 
@@ -288,14 +283,33 @@ Ray generateRay(vec2 uv, vec3 screenRight, vec3 screenUp, uint state) {
     return Ray(startPoint, dir, invDir, 0.001, 1000.0, vec3(1.0));
 }
 
+RayHit intersectModelNotBVH(Ray ray) {
+    RayHit hit = RayHit(false, false, vec3(0.0), vec3(0.0), 0.0, Material(Lambertian, vec3(0.0), 0.0, 0.0));
+
+    for(int i = 0; i < 12; i++) {
+        Triangle tri = triangles[i];
+
+        testCount2++;
+        RayHit temp = intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 0.0, 0.0), 1.0, 0.95));
+        
+        if(temp.isHit) {
+            ray.maxT = temp.t;
+            hit = temp;
+            testCount3++;
+            hit.position = hit.position;
+            hit.normal = hit.normal;
+        }
+    }
+    return hit;
+}
+
 RayHit intersectModel(Ray ray, uint modelIndex) {
     RayHit hit = RayHit(false, false, vec3(0.0), vec3(0.0), 0.0, Material(Lambertian, vec3(0.0), 0.0, 0.0));
 
 
     Model model = modelList[modelIndex];
     uint bvhNodeOffset = model.bvhNodeOffset;
-    uint indicesOffset = model.indicesOffset;
-    uint verticesOffset = model.verticesOffset;
+    uint triOffset = model.triOffset;
 
     mat4 modelMatrix = modelList[modelIndex].modelMat;
     mat4 invModel = inverse(modelMatrix);
@@ -321,22 +335,10 @@ RayHit intersectModel(Ray ray, uint modelIndex) {
             if(node.triCount > 0) {
                 //triangle tests
                 for(int i = 0; i < node.triCount; i++) {
-                    
-                    uint index1 = indices[i*3 + node.start + indicesOffset] + verticesOffset;
-                    uint index2 = indices[i*3 + node.start + indicesOffset + 1] + verticesOffset;
-                    uint index3 = indices[i*3 + node.start + indicesOffset + 2] + verticesOffset;
+                    Triangle tri = triangles[i + node.start + triOffset];
 
-                    vec3 pos1 = vertices[index1].position;
-                    vec3 pos2 = vertices[index2].position;
-                    vec3 pos3 = vertices[index3].position;
-
-                    vec3 normal1 = vertices[index1].normal;
-                    vec3 normal2 = vertices[index2].normal;
-                    vec3 normal3 = vertices[index3].normal;
-
-                    Triangle tri = Triangle(pos1, pos2, pos3, normal1, normal2, normal3, Material(Lambertian, vec3(1.0, 1.0, 1.0), 1.0, 0.95));
                     testCount2++;
-                    RayHit temp = intersectTriangle(ray, tri);
+                    RayHit temp =  intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 1.0, 1.0), 1.0, 0.95));
                     
                     if(temp.isHit) {
                         ray.maxT = temp.t;
@@ -390,14 +392,21 @@ RayHit intersectAll(Ray ray) {
         }
     }
 
-    for(int i = 0; i < 2; i++) {
+    
+    for(int i = 0; i < modelList.length(); i++) {
         RayHit temp = intersectModel(ray, i);
         if(temp.isHit) { 
             ray.maxT = temp.t;
             hit = temp;
         }
     }
-    
+    /*
+    RayHit temp = intersectModelNotBVH(ray);
+    if(temp.isHit) { 
+        ray.maxT = temp.t;
+        hit = temp;
+    }
+    */
     return hit;
 }
 

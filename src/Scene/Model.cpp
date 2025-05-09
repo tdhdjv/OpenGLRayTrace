@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-
 Model::Model(const std::string& path) {
     loadModel(path);
 }
@@ -32,7 +31,7 @@ void Model::processNode(aiNode* node, const aiScene* scene) {
         // the node object only contains indices to index the actual objects in the scene. 
         // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        meshes.push_back(processMesh(mesh, scene));
+        meshes.emplace_back(processMesh(mesh, scene));
     }
 
     // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
@@ -41,7 +40,7 @@ void Model::processNode(aiNode* node, const aiScene* scene) {
     }
 }
 
-ref<Mesh> Model::processMesh(aiMesh* mesh, const aiScene* scene) {
+MeshData Model::processMesh(aiMesh* mesh, const aiScene* scene) {
     // data to fill
     list<Vertex> vertices;
     list<unsigned> indices;
@@ -130,5 +129,5 @@ ref<Mesh> Model::processMesh(aiMesh* mesh, const aiScene* scene) {
     // return a mesh object created from the extracted mesh data
 
     */
-    return makeRef<Mesh>(vertices, indices, textures);
+    return { vertices, indices, textures };
 }

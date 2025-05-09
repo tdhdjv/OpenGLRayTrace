@@ -8,7 +8,9 @@ private:
     unsigned int rendererID;
 public:
     VertexArray();
-    VertexArray(const VertexArray&) = delete;
+    VertexArray(VertexArray& other) noexcept;
+    VertexArray& operator=(const VertexArray&) = delete;
+
     ~VertexArray();
     void setAttrib(const VertexBufferLayout& layout) const;
     void bind() const;

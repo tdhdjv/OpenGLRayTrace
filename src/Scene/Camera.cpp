@@ -1,7 +1,7 @@
 #include "Camera.h"
 
 Camera::Camera()
-	:position(0.0), viewDir(0.0, 0.0, 1.0),
+	:position(0.0), viewDir(0.0, 0.0, 1.0), projectionMat(glm::perspective(glm::radians(45.0f), (float)1000 / (float)800, 0.01f, 100.0f)),
 	yaw(0.0), pitch(0.0), roll(0.0) 
 {
 	viewMat = glm::lookAt(position, position + viewDir, up);

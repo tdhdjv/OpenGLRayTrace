@@ -12,12 +12,16 @@
 
 #include "Scene/Camera.h"
 
-struct MeshData {
+struct RayTraceMeshData {
 	glm::mat4 modelMatrix;
 	unsigned bvhNodeOffset;
-	unsigned indicesOffset;
-	unsigned verticesOffset;
-	float pad1;
+	unsigned triOffset;
+	float _pad1;
+	float _pad2;
+
+	RayTraceMeshData(const glm::mat4& modelMatrix, unsigned bvhNodeOffset, unsigned triOffset) : 
+	modelMatrix(modelMatrix), bvhNodeOffset(bvhNodeOffset), triOffset(triOffset), _pad1(0), _pad2(0)
+	{}
 };
 
 struct Texture {
@@ -27,23 +31,27 @@ struct Texture {
 
 struct Vertex {
 	glm::vec3 position;
-	float _pad1;
-
 	glm::vec3 normal;
-	float _pad2;
-	
 	glm::vec2 texCoord;
-	float _pad3[2];
+};
+
+struct MeshData {
+	list<Vertex> vertices;
+	list<unsigned> indices;
+	list<Texture> textures;
 };
 
 class Mesh {
 public:
-	Mesh(list<Vertex> vertices, list<unsigned> indices, list<Texture> textures);
+	Mesh(const list<Vertex>& vertices, const list<unsigned>& indices, const list<Texture>& textures);
+	Mesh(const MeshData& meshData);
+	Mesh(const Mesh&) = delete;
+	Mesh(Mesh&& mesh) noexcept;
 
 	inline const list<Vertex>& getVertices() const { return vertices; }
+	inline const list<unsigned>& getIndices() const { return indices; }
 	inline const glm::mat4& getModelMatrix() const { return modelMatrix; }
 	inline const size_t getIndicesCount() const { return indices.size(); }
-	inline list<unsigned>& getIndices() { return indices; }
 
 	inline void bind() const { vao.bind(); }
 

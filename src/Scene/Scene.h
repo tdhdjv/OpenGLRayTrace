@@ -6,17 +6,22 @@
 
 class Scene {
 public:
-	Scene() = default;
+	Scene();
+	Scene(const Scene&) = delete;
+	Scene& operator=(const Scene&) = delete;
 
-	void addMesh(ref<Mesh> mesh);
-	void addModel(Model&& model);
+	Scene(Scene&&) = delete;
+	Scene& operator=(Scene&&) = delete;
+
+	void addMesh(Mesh&& mesh);
+	void addModel(const Model& model);
 
 	void update(float dt);
 
 	inline const Camera& getCamera() const { return camera; }
-	inline const list<ref<Mesh>>& getMeshes() const { return meshList; }
+	inline const ref<list<Mesh>> getMeshes() const { return meshList; }
 
 private:
 	Camera camera;
-	list<ref<Mesh>> meshList;
+	ref<list<Mesh>> meshList;
 };

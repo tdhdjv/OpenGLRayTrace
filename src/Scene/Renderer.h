@@ -3,19 +3,24 @@
 #include "Core/Defines.h"
 #include "OpenGL/Shader.h"
 #include "Scene/Scene.h"
+#include "OpenGL/UniformBuffer.h"
+
+//A renderPass is the smallest unit of collective render
+struct RenderPass {
+	const ref<ShaderProgram> program;
+	const ref<list<Mesh>> meshList;
+};
 
 class Renderer {
 public:
 	Renderer();
 
+	inline void pushRenderPass(const RenderPass& pass) { renderPassList.emplace_back(pass); }
 	void clearScreen();
-	//We are making assumptions that shaders are always going to have model/view/projection matrices (Change Later!)
-	void renderScene(const ref<Scene> scene, const std::string& mode = "default");
-	inline void setShader(ref<ShaderProgram> shaderProgram, const std::string& mode = "default") { shaderList[mode] = shaderProgram; }
-	template<typename T>
-	void setShaderUniform(const char* uniform, const T& value, const std::string& mode = "default");
-private:
+	void render();
 
-	//rendering mode, shader
-	map<std::string, ref<ShaderProgram>> shaderList;
+private:
+	void renderAPass(const RenderPass& renderPass);
+
+	list<RenderPass> renderPassList;
 };

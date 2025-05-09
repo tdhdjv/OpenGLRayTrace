@@ -114,6 +114,14 @@ ShaderProgram::ShaderProgram() {
 	GLCall(rendererID = glCreateProgram());
 }
 
+ShaderProgram::ShaderProgram(std::initializer_list<Shader> shaders) {
+	GLCall(rendererID = glCreateProgram());
+	for (Shader shader : shaders) {
+		attachShader(std::move(shader));
+	}
+	linkProgram();
+}
+
 ShaderProgram::~ShaderProgram() {
 	GLCall(glDeleteProgram(rendererID));
 }
@@ -138,40 +146,116 @@ void ShaderProgram::linkProgram() {
 	}
 }
 
-int ShaderProgram::getUniformLocation(std::string name) {
-	if (uniformLocation.contains(name)) return uniformLocation[name];
-	GLCall(int location = glGetUniformLocation(rendererID, name.c_str()));
-	if (location == -1) {
-		std::cout << "Uniform called '" << name << "' Doesn't Exist or is Unused" << std::endl;
+void ShaderProgram::updateGlobalUniforms() {
+	for (const UniformElement& element : globalUniforms) {
+		setValue(element.location, element.type, element.value);
 	}
-	uniformLocation[name] = location;
-	return location;
 }
 
-template<>
-void ShaderProgram::setUniform<int>(std::string name, const int& value) {
-	int location = getUniformLocation(name);
-	if (location == -1) return;
-	GLCall(glUniform1i(location, value));
+void ShaderProgram::pushGlobalInt(const char* name, const int* value) {
+	int location = getLocation(name);
+	globalUniforms.emplace_back(location, UniformType::INT, value);
 }
 
-template<>
-void ShaderProgram::setUniform<float>(std::string name,const float& value) {
-	int location = getUniformLocation(name);
-	if (location == -1) return;
-	GLCall(glUniform1f(location, value));
+void ShaderProgram::pushGlobalFloat(const char* name, const float* value) {
+	int location = getLocation(name);
+	globalUniforms.emplace_back(location, UniformType::FLOAT, value);
 }
 
-template<>
-void ShaderProgram::setUniform<glm::vec3>(std::string name, const glm::vec3& value) {
-	int location = getUniformLocation(name);
-	if (location == -1) return;
+void ShaderProgram::pushGlobalFloat3(const char* name, const glm::vec3* value) {
+	int location = getLocation(name);
+	globalUniforms.emplace_back(location, UniformType::VEC3, value);
+}
+
+void ShaderProgram::pushGlobalFloat4(const char* name, const glm::vec4* value) {
+	int location = getLocation(name);
+	globalUniforms.emplace_back(location, UniformType::VEC4, value);
+}
+
+void ShaderProgram::pushGlobalMat4(const char* name, const glm::mat4* value) {
+	int location = getLocation(name);
+	globalUniforms.emplace_back(location, UniformType::MAT4, value);
+}
+
+void ShaderProgram::setInt(const char* name, int value) {
+	int location = getLocation(name);
+	if (location == -1) {
+		std::cout << "Uniform called '" << name << "' is Unused or Doesn't Exist" << std::endl;
+	}
+	glUniform1i(location, value);
+}
+
+void ShaderProgram::setFloat(const char* name, float value) {
+	int location = getLocation(name);
+	if (location == -1) {
+		std::cout << "Uniform called '" << name << "' is Unused or Doesn't Exist" << std::endl;
+	}
+	glUniform1f(location, value);
+}
+
+void ShaderProgram::setFloat3(const char* name, float f1, float f2, float f3) {
+	int location = getLocation(name);
+	if (location == -1) {
+		std::cout << "Uniform called '" << name << "' is Unused or Doesn't Exist" << std::endl;
+	}
+	GLCall(glUniform3f(location, f1, f2, f3));
+}
+
+void ShaderProgram::setFloat3(const char* name, const glm::vec3& value) {
+	int location = getLocation(name);
+	if (location == -1) {
+		std::cout << "Uniform called '" << name << "' is Unused or Doesn't Exist" << std::endl;
+	}
 	GLCall(glUniform3f(location, value.x, value.y, value.z));
 }
 
-template<>
-void ShaderProgram::setUniform<glm::mat4>(std::string name, const glm::mat4& value) {
-	int location = getUniformLocation(name);
-	if (location == -1) return;
+void ShaderProgram::setFloat4(const char* name, float f1, float f2, float f3, float f4) {
+	int location = getLocation(name);
+	if (location == -1) {
+		std::cout << "Uniform called '" << name << "' is Unused or Doesn't Exist" << std::endl;
+	}
+	GLCall(glUniform4f(location, f1, f2, f3, f4));
+}
+
+void ShaderProgram::setFloat4(const char* name, const glm::vec4& value) {
+	int location = getLocation(name);
+	if (location == -1) {
+		std::cout << "Uniform called '" << name << "' is Unused or Doesn't Exist" << std::endl;
+	}
+	GLCall(glUniform4f(location, value.x, value.y, value.z, value.z));
+}
+
+void ShaderProgram::setMat4(const char* name, const glm::mat4& value) {
+	int location = getLocation(name);
+	if (location == -1) {
+		std::cout << "Uniform called '" << name << "' is Unused or Doesn't Exist" << std::endl;
+	} 
 	GLCall(glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]));
+}
+
+int ShaderProgram::getLocation(const char* name) {
+	int location;
+	if (uniformLocation.find(name) != uniformLocation.end()) {
+		location = uniformLocation[name];
+	}
+	else {
+		GLCall(location = glGetUniformLocation(rendererID, name));
+		uniformLocation[name] = location;
+	}
+	return location;
+}
+
+void ShaderProgram::setValue(const unsigned location, UniformType type, const void* value) {
+	switch (type) {
+	case UniformType::INT:
+		setInt(location, *(int*)value);
+	case UniformType::FLOAT:
+		setFloat(location, *(float*)value);
+	case UniformType::VEC3:
+		setFloat3(location, *(glm::vec3*)value);
+	case UniformType::VEC4:
+		setFloat4(location, *(glm::vec4*)value);
+	case UniformType::MAT4:
+		setMat4(location, *(glm::mat4*)value);
+	}
 }

@@ -160,6 +160,7 @@
     <ClCompile Include="src\Core\Input.cpp" />
     <ClCompile Include="src\Core\Main.cpp" />
     <ClCompile Include="src\Core\Window.cpp" />
+    <ClCompile Include="src\OpenGL\UniformBuffer.cpp" />
     <ClCompile Include="src\RayTrace\RayTraceManager.cpp" />
     <ClCompile Include="src\OpenGL\FrameBuffer.cpp" />
     <ClCompile Include="src\OpenGL\IndexBuffer.cpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="src\Core\Defines.h" />
     <ClInclude Include="src\Core\Input.h" />
     <ClInclude Include="src\Core\Window.h" />
+    <ClInclude Include="src\OpenGL\UniformBuffer.h" />
     <ClInclude Include="src\RayTrace\RayTraceManager.h" />
     <ClInclude Include="src\OpenGL\FrameBuffer.h" />
     <ClInclude Include="src\OpenGL\IndexBuffer.h" />

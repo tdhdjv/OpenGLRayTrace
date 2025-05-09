@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+Scene::Scene(): meshList(makeRef<list<Mesh>>()){}
+
 void Scene::update(float dt) {
 	float speed = 1.0;
 	if (Input::isPressed(GLFW_KEY_W)) {
@@ -47,12 +49,13 @@ void Scene::update(float dt) {
 	}
 }
 
-void Scene::addMesh(ref<Mesh> mesh) {
-	meshList.emplace_back(mesh);
+void Scene::addMesh(Mesh&& mesh) {
+	meshList->emplace_back(std::move(mesh));
 }
 
-void Scene::addModel(Model&& model) {
-	for (const ref<Mesh>& mesh: model.getMeshes()) {
-		meshList.emplace_back(mesh);
+
+void Scene::addModel(const Model& model) {
+	for (const MeshData& meshData: model.getMeshData()) {
+		meshList->emplace_back(meshData);
 	}
 }

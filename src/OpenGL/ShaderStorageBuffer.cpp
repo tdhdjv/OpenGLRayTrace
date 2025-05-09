@@ -1,5 +1,7 @@
 #include "ShaderStorageBuffer.h"
 
+ShaderStorageBuffer::ShaderStorageBuffer() {}
+
 ShaderStorageBuffer::ShaderStorageBuffer(unsigned bindingLocation, list<SSBOData> dataList): bindingLocation(bindingLocation) {
 	GLCall(glGenBuffers(1, &buffer));
 	GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));
@@ -17,6 +19,14 @@ ShaderStorageBuffer::ShaderStorageBuffer(unsigned bindingLocation, list<SSBOData
 	GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
 }
 
+ShaderStorageBuffer& ShaderStorageBuffer::operator=(ShaderStorageBuffer&& other) noexcept {
+	buffer = other.buffer;
+	bindingLocation = other.bindingLocation;
+	other.buffer = 0;
+	return *this;
+}
+
 ShaderStorageBuffer::~ShaderStorageBuffer() {
+	if (buffer == 0) return;
 	GLCall(glDeleteBuffers(1, &buffer));
 }
