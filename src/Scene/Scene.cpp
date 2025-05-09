@@ -54,8 +54,8 @@ void Scene::addMesh(Mesh&& mesh) {
 }
 
 
-void Scene::addModel(const Model& model) {
+void Scene::addModel(const Model& model, unsigned material, const glm::vec3& color, float value1, float value2) {
 	for (const MeshData& meshData: model.getMeshData()) {
-		meshList->emplace_back(meshData);
+		meshList->emplace_back(meshData, material, color, value1, value2);
 	}
 }

@@ -75,7 +75,7 @@ RayTraceManager::RayTraceManager(const Scene& scene, unsigned width, unsigned he
 		list<Tri> triangles = bvhData.triangles;
 		list<BVHNode> nodes = bvhData.nodes;
 
-		meshDataList.push_back({ mesh.getModelMatrix(), bvhOffset , triOffset });
+		meshDataList.push_back({ mesh.getModelMatrix(), bvhOffset , triOffset , mesh.value1, mesh.value2, mesh.color, mesh.material });
 		bvhOffset += nodes.size();
 		triOffset += triangles.size();
 
@@ -94,7 +94,7 @@ RayTraceManager::RayTraceManager(const Scene& scene, unsigned width, unsigned he
 	bvhSSBO.bind();
 
 	list<SSBOData> meshSSBODataList;
-	meshSSBODataList.emplace_back(meshDataList.data(), sizeof(float) * 20 * meshDataList.size());
+	meshSSBODataList.emplace_back(meshDataList.data(), sizeof(float) * 24 * meshDataList.size());
 	modelSSBO = ShaderStorageBuffer(3, meshSSBODataList);
 	modelSSBO.bind();
 }

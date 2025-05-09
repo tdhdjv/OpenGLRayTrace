@@ -3,6 +3,27 @@
 #include "Scene/Scene.h"
 #include "OpenGL/ShaderStorageBuffer.h"
 
+
+enum RayTraceMaterialType {
+	LAMBERTIAN = 0,
+	METALLIC = 1,
+	TRANSPARENT = 2,
+	EMISSIVE = 3,
+	GLOSSY = 4,
+};
+
+struct RayTraceMeshData {
+	glm::mat4 modelMatrix;
+	unsigned bvhNodeOffset;
+	unsigned triOffset;
+
+	float value1;
+	float value2;
+
+	glm::vec3 color;
+	unsigned material;
+};
+
 class RayTraceManager {
 public:
 	//just hard code the raytracing shader! MAY FIX LATER(probabily not)

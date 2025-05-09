@@ -17,6 +17,7 @@ struct Ray {
     float minT;
     float maxT;
     vec3 energy;
+    float inverseCull;
 };
 
 float fresnel(float cosine, float refraction_index) {
@@ -44,13 +45,20 @@ Ray rayBounce(Ray ray, in RayHit hit, inout uint state) {
 
     case Transparent:
         float eta;
-        if(!hit.isInside) eta = 1.0/hit.mat.value1;
-        else eta = hit.mat.value1;
+
+        if(!hit.isInside) {
+            eta = 1.0/hit.mat.value2;
+            ray.inverseCull = 1.0;
+        }
+        else {
+            eta = hit.mat.value2;
+            ray.inverseCull = 1.0;
+        }
         vec3 refractDir = refract(ray.dir, hit.normal, eta);
         float cosine = dot(-ray.dir, hit.normal);
         if(length(refractDir) == 0.0 || fresnel(cosine, eta) > rand(state)) { dir = refl; }
         else { dir = refractDir; }
-        dir += randDir * (1.0 - hit.mat.value2);
+        dir += randDir * (1.0 - hit.mat.value1);
         break;
 
     case Glossy:

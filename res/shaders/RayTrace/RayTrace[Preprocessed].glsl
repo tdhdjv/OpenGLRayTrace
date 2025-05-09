@@ -26,7 +26,6 @@ int testCount3 = 0;
 
 #define DEBUG false
 
-
 const vec3 sunColor = vec3(1.0);
 const float sunFocus = 500;
 const float sunIntensity = 10;
@@ -72,9 +71,9 @@ const uint Glossy = 4;
 struct Material {
     uint MaterialType;
     vec3 color;
-    //smoothness / index of refaction / smoothness
+    //smoothness
     float value1;
-    //None / smoothness / reflect probablity
+    //None / index of refaction / reflect probablity
     float value2;
 };
 
@@ -95,6 +94,7 @@ struct Ray {
     float minT;
     float maxT;
     vec3 energy;
+    float inverseCull;
 };
 
 float fresnel(float cosine, float refraction_index) {
@@ -122,13 +122,20 @@ Ray rayBounce(Ray ray, in RayHit hit, inout uint state) {
 
     case Transparent:
         float eta;
-        if(!hit.isInside) eta = 1.0/hit.mat.value1;
-        else eta = hit.mat.value1;
+
+        if(!hit.isInside) {
+            eta = 1.0/hit.mat.value2;
+            ray.inverseCull = 1.0;
+        }
+        else {
+            eta = hit.mat.value2;
+            ray.inverseCull = 1.0;
+        }
         vec3 refractDir = refract(ray.dir, hit.normal, eta);
         float cosine = dot(-ray.dir, hit.normal);
         if(length(refractDir) == 0.0 || fresnel(cosine, eta) > rand(state)) { dir = refl; }
         else { dir = refractDir; }
-        dir += randDir * (1.0 - hit.mat.value2);
+        dir += randDir * (1.0 - hit.mat.value1);
         break;
 
     case Glossy:
@@ -148,13 +155,6 @@ Ray rayBounce(Ray ray, in RayHit hit, inout uint state) {
 }
 
 
-struct Model {
-    int firstTriangleIndex;
-    int triangleCount; 
-
-    Material mat;
-};
-
 struct Sphere {
     vec3 position;
     float radius;
@@ -166,7 +166,7 @@ float square_length(vec3 vec) {
     return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
 }
 
-RayHit intersectTriangle(Ray ray, Triangle tri, Material mat) {
+RayHit intersectTriangle(Ray ray, Triangle tri, Material mat, float inverseCull) {
     RayHit hit = RayHit(false, false, vec3(0.0), vec3(0.0, 1.0, 0.0), 0.0, Material(Lambertian, vec3(0.0), 0.0, 0.0));
     
     vec3 edgeAB = tri.positionB - tri.positionA;
@@ -183,10 +183,10 @@ RayHit intersectTriangle(Ray ray, Triangle tri, Material mat) {
     float v = -dot(edgeAB, dao) * invDet;
     float w = 1.0 - u - v;
 
-    hit.isHit = determinant >= 1E-8 && dst >= ray.minT && u >= 0 && v >= 0 && w >= 0;
-    hit.isInside = determinant < 0.0;
+    hit.isHit = inverseCull* determinant >= 1E-8 && dst >= ray.minT && u >= 0 && v >= 0 && w >= 0;
+    hit.isInside = inverseCull == -1.0;
     hit.position = ray.origin + ray.dir * dst;
-    hit.normal = length(tri.normalA) == 0 ? normalize(cross(edgeAB, edgeAC)) : normalize(tri.normalA * w + tri.normalB * u + tri.normalC * v);
+    hit.normal = inverseCull*normalize(tri.normalA * w + tri.normalB * u + tri.normalC * v);
     hit.t = dst;
     hit.mat = mat;
     return hit;
@@ -249,8 +249,12 @@ struct Model {
     mat4 modelMat;
     uint bvhNodeOffset;
     uint triOffset;
-    float _pad1;
-    float _pad2;
+
+    float value1;
+    float value2;
+
+    vec3 color;
+    uint materialType;
 };
 
 layout(std430, binding = 1) buffer TriData {
@@ -269,7 +273,7 @@ layout(std430, binding = 3) buffer ModelData {
 Sphere[SPHERE_COUNT] spheres;
 
 void instanceObjects() {
-    //spheres[0] = Sphere(vec3(0.0,  -100.0,  0.0), 100.0, Material(Lambertian, vec3(0.9), 1.0, 0.15));
+    spheres[0] = Sphere(vec3(-1.0,  0.0,  0.0), 0.45, Material(Transparent, vec3(0.9), 1.0, 1.33));
     //spheres[1] = Sphere(vec3( 0.0,  0.0,  5.0), 1.0, Material(Lambertian, vec3(1.0), 1.5, 0.0));
 }
 
@@ -280,7 +284,7 @@ Ray generateRay(vec2 uv, vec3 screenRight, vec3 screenUp, uint state) {
     vec3 startPoint = position + (screenRight * offset.x + screenUp * offset.y)*blur/resolution.y;
     vec3 dir = normalize(endPoint-startPoint);
     vec3 invDir = 1.0/dir;
-    return Ray(startPoint, dir, invDir, 0.001, 1000.0, vec3(1.0));
+    return Ray(startPoint, dir, invDir, 0.001, 1000.0, vec3(1.0), 1.0);
 }
 
 RayHit intersectModelNotBVH(Ray ray) {
@@ -290,7 +294,7 @@ RayHit intersectModelNotBVH(Ray ray) {
         Triangle tri = triangles[i];
 
         testCount2++;
-        RayHit temp = intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 0.0, 0.0), 1.0, 0.95));
+        RayHit temp = intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 0.0, 0.0), 1.0, 0.95), 1.0);
         
         if(temp.isHit) {
             ray.maxT = temp.t;
@@ -338,7 +342,7 @@ RayHit intersectModel(Ray ray, uint modelIndex) {
                     Triangle tri = triangles[i + node.start + triOffset];
 
                     testCount2++;
-                    RayHit temp =  intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 1.0, 1.0), 1.0, 0.95));
+                    RayHit temp =  intersectTriangle(ray, tri, Material(model.materialType, model.color, model.value1, model.value2) , ray.inverseCull);
                     
                     if(temp.isHit) {
                         ray.maxT = temp.t;

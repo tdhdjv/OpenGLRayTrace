@@ -12,18 +12,6 @@
 
 #include "Scene/Camera.h"
 
-struct RayTraceMeshData {
-	glm::mat4 modelMatrix;
-	unsigned bvhNodeOffset;
-	unsigned triOffset;
-	float _pad1;
-	float _pad2;
-
-	RayTraceMeshData(const glm::mat4& modelMatrix, unsigned bvhNodeOffset, unsigned triOffset) : 
-	modelMatrix(modelMatrix), bvhNodeOffset(bvhNodeOffset), triOffset(triOffset), _pad1(0), _pad2(0)
-	{}
-};
-
 struct Texture {
 	unsigned rendererID;
 	std::string type;
@@ -43,30 +31,34 @@ struct MeshData {
 
 class Mesh {
 public:
-	Mesh(const list<Vertex>& vertices, const list<unsigned>& indices, const list<Texture>& textures);
-	Mesh(const MeshData& meshData);
+	Mesh(const list<Vertex>& vertices, const list<unsigned>& indices, unsigned material, const glm::vec3& color, float value1, float value2);
+	Mesh(const MeshData& meshData, unsigned material, const glm::vec3& color, float value1, float value2);
 	Mesh(const Mesh&) = delete;
 	Mesh(Mesh&& mesh) noexcept;
 
 	inline const list<Vertex>& getVertices() const { return vertices; }
 	inline const list<unsigned>& getIndices() const { return indices; }
-	inline const glm::mat4& getModelMatrix() const { return modelMatrix; }
 	inline const size_t getIndicesCount() const { return indices.size(); }
 
 	inline void bind() const { vao.bind(); }
 
-	void setPosition(const glm::vec3 position);
-	void setRotation(const glm::vec3 rotation);
+	const glm::mat4 getModelMatrix() const;
+
+	glm::vec3 scale;
+	glm::vec3 position;
+	glm::vec3 rotation;
+
+	glm::vec3 color;
+	unsigned material;
+
+	float value1;
+	float value2;
+	
 private:
 	list<Vertex> vertices;
 	list<unsigned> indices;
-	list<Texture> textures;
 
 	VertexBuffer vbo;
 	IndexBuffer ebo;
 	VertexArray vao;
-
-	glm::mat4 modelMatrix;
-	glm::vec3 position;
-	glm::vec3 rotation;
 };

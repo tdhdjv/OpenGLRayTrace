@@ -14,7 +14,7 @@ public:
 	Scene& operator=(Scene&&) = delete;
 
 	void addMesh(Mesh&& mesh);
-	void addModel(const Model& model);
+	void addModel(const Model& model, unsigned material, const glm::vec3& color, float value1, float value);
 
 	void update(float dt);
 

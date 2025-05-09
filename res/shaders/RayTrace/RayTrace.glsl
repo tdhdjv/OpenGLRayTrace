@@ -26,7 +26,6 @@ int testCount3 = 0;
 
 #define DEBUG false
 
-
 const vec3 sunColor = vec3(1.0);
 const float sunFocus = 500;
 const float sunIntensity = 10;
@@ -56,8 +55,12 @@ struct Model {
     mat4 modelMat;
     uint bvhNodeOffset;
     uint triOffset;
-    float _pad1;
-    float _pad2;
+
+    float value1;
+    float value2;
+
+    vec3 color;
+    uint materialType;
 };
 
 layout(std430, binding = 1) buffer TriData {
@@ -76,7 +79,7 @@ layout(std430, binding = 3) buffer ModelData {
 Sphere[SPHERE_COUNT] spheres;
 
 void instanceObjects() {
-    //spheres[0] = Sphere(vec3(0.0,  -100.0,  0.0), 100.0, Material(Lambertian, vec3(0.9), 1.0, 0.15));
+    spheres[0] = Sphere(vec3(-1.0,  0.0,  0.0), 0.45, Material(Transparent, vec3(0.9), 1.0, 1.33));
     //spheres[1] = Sphere(vec3( 0.0,  0.0,  5.0), 1.0, Material(Lambertian, vec3(1.0), 1.5, 0.0));
 }
 
@@ -87,7 +90,7 @@ Ray generateRay(vec2 uv, vec3 screenRight, vec3 screenUp, uint state) {
     vec3 startPoint = position + (screenRight * offset.x + screenUp * offset.y)*blur/resolution.y;
     vec3 dir = normalize(endPoint-startPoint);
     vec3 invDir = 1.0/dir;
-    return Ray(startPoint, dir, invDir, 0.001, 1000.0, vec3(1.0));
+    return Ray(startPoint, dir, invDir, 0.001, 1000.0, vec3(1.0), 1.0);
 }
 
 RayHit intersectModelNotBVH(Ray ray) {
@@ -97,7 +100,7 @@ RayHit intersectModelNotBVH(Ray ray) {
         Triangle tri = triangles[i];
 
         testCount2++;
-        RayHit temp = intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 0.0, 0.0), 1.0, 0.95));
+        RayHit temp = intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 0.0, 0.0), 1.0, 0.95), 1.0);
         
         if(temp.isHit) {
             ray.maxT = temp.t;
@@ -145,7 +148,7 @@ RayHit intersectModel(Ray ray, uint modelIndex) {
                     Triangle tri = triangles[i + node.start + triOffset];
 
                     testCount2++;
-                    RayHit temp =  intersectTriangle(ray, tri, Material(Lambertian, vec3(1.0, 1.0, 1.0), 1.0, 0.95));
+                    RayHit temp =  intersectTriangle(ray, tri, Material(model.materialType, model.color, model.value1, model.value2) , ray.inverseCull);
                     
                     if(temp.isHit) {
                         ray.maxT = temp.t;

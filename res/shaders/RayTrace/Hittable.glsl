@@ -1,13 +1,6 @@
 #include "res/shaders/RayTrace/Ray.glsl"
 #include "res/shaders/RayTrace/Material.glsl"
 
-struct Model {
-    int firstTriangleIndex;
-    int triangleCount; 
-
-    Material mat;
-};
-
 struct Sphere {
     vec3 position;
     float radius;
@@ -19,7 +12,7 @@ float square_length(vec3 vec) {
     return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
 }
 
-RayHit intersectTriangle(Ray ray, Triangle tri, Material mat) {
+RayHit intersectTriangle(Ray ray, Triangle tri, Material mat, float inverseCull) {
     RayHit hit = RayHit(false, false, vec3(0.0), vec3(0.0, 1.0, 0.0), 0.0, Material(Lambertian, vec3(0.0), 0.0, 0.0));
     
     vec3 edgeAB = tri.positionB - tri.positionA;
@@ -36,10 +29,10 @@ RayHit intersectTriangle(Ray ray, Triangle tri, Material mat) {
     float v = -dot(edgeAB, dao) * invDet;
     float w = 1.0 - u - v;
 
-    hit.isHit = determinant >= 1E-8 && dst >= ray.minT && u >= 0 && v >= 0 && w >= 0;
-    hit.isInside = determinant < 0.0;
+    hit.isHit = inverseCull* determinant >= 1E-8 && dst >= ray.minT && u >= 0 && v >= 0 && w >= 0;
+    hit.isInside = inverseCull == -1.0;
     hit.position = ray.origin + ray.dir * dst;
-    hit.normal = length(tri.normalA) == 0 ? normalize(cross(edgeAB, edgeAC)) : normalize(tri.normalA * w + tri.normalB * u + tri.normalC * v);
+    hit.normal = inverseCull*normalize(tri.normalA * w + tri.normalB * u + tri.normalC * v);
     hit.t = dst;
     hit.mat = mat;
     return hit;
